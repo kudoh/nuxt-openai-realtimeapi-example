@@ -4,20 +4,6 @@ type Params = {
   onMessageCallback?: (message: MessageEvent) => void;
 };
 
-/**
- * Function that sets up and manages a WebSocket connection for real-time communication.
- *
- * @param {Object} Params - The parameters required for configuring the real-time API connection.
- * @param {string} Params.url - The URL of the WebSocket server to connect to.
- * @param {function} Params.logMessage - A function to log messages from the API.
- * @param {function|undefined} Params.onMessageCallback - An optional callback function to handle incoming messages.
- *
- * @returns {Object} An object containing functions and state variables to manage the WebSocket connection:
- * @returns {function} connect - Function to establish the WebSocket connection.
- * @returns {function} disconnect - Function to close the WebSocket connection.
- * @returns {function} sendMessage - Function to send a message over the WebSocket connection.
- * @returns {Ref<boolean>} isConnected - A reactive boolean flag indicating the connection status.
- */
 export const useRealtimeApi = ({ url, logMessage, onMessageCallback }: Params) => {
   let ws: WebSocket | null = null;
   const isConnected = ref(false);

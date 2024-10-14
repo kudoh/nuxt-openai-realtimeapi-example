@@ -7,22 +7,6 @@ type Params = {
   onFlushCallback: (buffer: ArrayBuffer) => void;
 };
 
-/**
- * Initiates the audio recording process by setting the recording state to true, creating an AudioContext object,
- * initializing an audio analyser, and adding an audio worklet module for processing audio data.
- * It then requests access to the user's audio device, establishes a media stream source, and connects it to an
- * AudioWorkletNode for further processing. Additionally, it sets up a periodic flush function to process audio buffers
- * and a callback to handle incoming audio data messages.
- * If available, it also renders a waveform visualization of the audio stream.
- * Finally, it logs a message indicating that recording has started.
- *
- * @param {Object} Params - The parameters object.
- * @param {HTMLElement} Params.audioCanvas - The HTML canvas element to render audio visualizations.
- * @param {Function} Params.logMessage - The callback function for logging messages.
- * @param {Function} Params.onFlushCallback - The callback function for handling flushed audio data.
- *
- * @return {Object} - An object containing functions to control audio recording.
- */
 export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
   let audioContext: AudioContext | null = null;
   const isRecording = ref(false);
