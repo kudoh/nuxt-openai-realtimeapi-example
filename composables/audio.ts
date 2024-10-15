@@ -35,8 +35,9 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
   async function startRecording() {
     isRecording.value = true;
     audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
+    analyser = new AnalyserNode(audioContext, {
+      fftSize: 2048,
+    });
     audioWaveform.value = initCanvas(audioCanvas, analyser, isRecording);
 
     await audioContext.audioWorklet.addModule('/audio-processor.js');
@@ -52,7 +53,7 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
       }
     }, BUFFER_INTERVAL);
 
-    mediaStreamSource = audioContext.createMediaStreamSource(mediaStream);
+    mediaStreamSource = new MediaStreamAudioSourceNode(audioContext, { mediaStream });
     mediaStreamSource.connect(audioWorkletNode);
     mediaStreamSource.connect(analyser);
 
@@ -127,11 +128,18 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
     const audio = audioQueue.shift();
     if (!audio) return;
 
-    const audioBuffer = audioContext.createBuffer(1, audio.length, audioContext.sampleRate);
+    const audioBuffer = new AudioBuffer({
+      numberOfChannels: 1,
+      length: audio.length,
+      sampleRate: audioContext.sampleRate,
+    });
     audioBuffer.copyToChannel(audio, 0);
 
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
+    const source = new AudioBufferSourceNode(
+      audioContext, {
+        buffer: audioBuffer,
+      },
+    );
     source.connect(audioContext.destination);
     source.connect(analyser);
     source.start();
