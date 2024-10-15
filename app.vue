@@ -3,20 +3,18 @@ const audioCanvas = useTemplateRef('audio-canvas');
 const messageContainer = useTemplateRef('message-container');
 const logContainer = useTemplateRef('log-container');
 
-const log = useLog(messageContainer, logContainer);
+const { messageLog, eventLog, logEvent, logMessage } = useLog(messageContainer, logContainer);
 const { connect, isConnected, disconnect, sendMessage } = useRealtimeApi({
   url: 'ws://localhost:3000/ws',
-  logMessage: log.logMessage,
+  logMessage: logMessage,
   onMessageCallback: handleWebSocketMessage,
 });
 
 const { startRecording, stopRecording, enqueueAudio, isRecording } = useAudio({
   audioCanvas,
-  logMessage: log.logMessage,
+  logMessage: logMessage,
   onFlushCallback: handleAudioFlush,
 });
-
-const { eventLog, messageLog } = toRefs(log);
 
 // マイクからの音声入力をRealtimeAPIに送信
 function handleAudioFlush(buffer: ArrayBuffer) {
@@ -26,20 +24,20 @@ function handleAudioFlush(buffer: ArrayBuffer) {
 // RealtimeAPIからのイベントを制御
 function handleWebSocketMessage(message: MessageEvent) {
   const event = JSON.parse(message.data);
-  log.logEvent(event.type);
+  logEvent(event.type);
   switch (event.type) {
     case 'response.audio.delta': {
       enqueueAudio(base64ToAudioData(event.delta));
       break;
     }
     case 'response.audio_transcript.done':
-      log.logMessage(`🤖: ${event.transcript}`);
+      logMessage(`🤖: ${event.transcript}`);
       break;
     case 'conversation.item.input_audio_transcription.completed':
-      log.logMessage(`😄: ${event.transcript}`);
+      logMessage(`😄: ${event.transcript}`);
       break;
     case 'error':
-      log.logEvent(event.error);
+      logEvent(event.error);
       if (isRecording.value) stopRecording();
       if (event.code === 'session_expired') disconnect();
       break;

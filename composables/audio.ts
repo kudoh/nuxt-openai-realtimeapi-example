@@ -13,6 +13,7 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
   const isPlaying = ref(false);
   const { initCanvas } = useAudioVisualizer();
 
+  let analyser: AnalyserNode | null;
   let audioBuffer: Int16Array[] = [];
   let currentBufferSize = 0;
   let mediaStreamSource: MediaStreamAudioSourceNode | null = null;
@@ -34,12 +35,13 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
   async function startRecording() {
     isRecording.value = true;
     audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-    const analyser = audioContext.createAnalyser();
-    audioWaveform.value = initCanvas(audioCanvas, audioContext, analyser, isRecording);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    audioWaveform.value = initCanvas(audioCanvas, analyser, isRecording);
 
     await audioContext.audioWorklet.addModule('/audio-processor.js');
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor');
 
     audioWorkletNode.port.onmessage = event => processAudioData(event.data);
@@ -50,11 +52,12 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
       }
     }, BUFFER_INTERVAL);
 
-    mediaStreamSource = audioContext.createMediaStreamSource(stream);
+    mediaStreamSource = audioContext.createMediaStreamSource(mediaStream);
     mediaStreamSource.connect(audioWorkletNode);
+    mediaStreamSource.connect(analyser);
 
     if (audioWaveform.value) {
-      audioWaveform.value.drawWaveform({ type: 'stream', stream: stream });
+      audioWaveform.value.drawWaveform();
     }
     logMessage('Start Recording...🎙️');
   }
@@ -130,6 +133,7 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
     const source = audioContext.createBufferSource();
     source.buffer = audioBuffer;
     source.connect(audioContext.destination);
+    source.connect(analyser);
     source.start();
 
     source.onended = () => {

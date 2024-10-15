@@ -1,9 +1,8 @@
 export function useAudioVisualizer() {
-  function initCanvas(canvasRef: Ref<HTMLCanvasElement>, audioContext: AudioContext, analyser: AnalyserNode, isActive: Ref<boolean>) {
-    analyser.fftSize = 2048;
+  function initCanvas(canvasRef: Ref<HTMLCanvasElement>, analyser: AnalyserNode, isActive: Ref<boolean>) {
     const dataArray: Uint8Array = new Uint8Array(analyser.fftSize);
 
-    const drawWaveform = (source: { type: 'stream'; stream: MediaStream } | { type: 'node'; node: AudioNode }) => {
+    const drawWaveform = () => {
       const canvas = canvasRef.value;
 
       if (!canvas) {
@@ -12,13 +11,6 @@ export function useAudioVisualizer() {
       }
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-
-      if (source.type === 'stream') {
-        const node = audioContext.createMediaStreamSource(source.stream);
-        node.connect(analyser);
-      } else {
-        source.node.connect(analyser);
-      }
 
       const draw = () => {
         if (!analyser || !dataArray) return;
