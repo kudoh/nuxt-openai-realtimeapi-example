@@ -46,7 +46,7 @@ export const useRealtimeApi = ({ url, logMessage, onMessageCallback }: Params) =
    * @return {void}
    */
   function disconnect() {
-    if (ws) ws.close();
+    ws?.close();
   }
 
   /**
@@ -57,8 +57,8 @@ export const useRealtimeApi = ({ url, logMessage, onMessageCallback }: Params) =
    * @return {void} This method does not return anything.
    */
   function sendMessage(data: unknown) {
-    if (ws && isConnected.value) {
-      ws.send(JSON.stringify(data));
+    if (isConnected.value) {
+      ws?.send(JSON.stringify(data));
     }
   }
 

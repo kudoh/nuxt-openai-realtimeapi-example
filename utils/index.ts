@@ -1,9 +1,8 @@
-export function base64ToAudioData(base64Data: string) {
-  const pcm16ArrayBuffer = base64ToArrayBuffer(base64Data);
-  return Float32Array.from(new Int16Array(pcm16ArrayBuffer), value => value / 0x8000);
+export function arrayBufferToAudioData(buffer: ArrayBuffer) {
+  return Float32Array.from(new Int16Array(buffer), value => value / 0x8000);
 }
 
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
+export function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const binaryString = window.atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);

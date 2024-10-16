@@ -1,40 +1,47 @@
 <script setup lang="ts">
+// Canvasタグ(波形表示用)
+import { base64ToArrayBuffer } from '~/utils';
+
 const audioCanvas = useTemplateRef('audio-canvas');
+// メッセージ表示領域
 const messageContainer = useTemplateRef('message-container');
 const logContainer = useTemplateRef('log-container');
 
-const { messageLog, eventLog, logEvent, logMessage } = useLog(messageContainer, logContainer);
-const { connect, isConnected, disconnect, sendMessage } = useRealtimeApi({
-  url: 'ws://localhost:3000/ws',
-  logMessage: logMessage,
-  onMessageCallback: handleWebSocketMessage,
-});
+// メッセージ、イベントログ出力
+const messageLog = ref<string[]>([]);
+const eventLog = ref<string[]>([]);
 
-const { startRecording, stopRecording, enqueueAudio, isRecording } = useAudio({
-  audioCanvas,
-  logMessage: logMessage,
-  onFlushCallback: handleAudioFlush,
-});
-
-// マイクからの音声入力をRealtimeAPIに送信
-function handleAudioFlush(buffer: ArrayBuffer) {
-  sendMessage({ type: 'input_audio_buffer.append', audio: arrayBufferToBase64(buffer) });
+function logMessage(message: string) {
+  messageLog.value.push(message);
+  if (messageContainer.value) scroll(messageContainer);
 }
 
-// RealtimeAPIからのイベントを制御
+function logEvent(message: string) {
+  eventLog.value.push(message);
+  if (logContainer.value) scroll(logContainer);
+}
+
+function scroll(containerRef: Ref<HTMLElement>) {
+  nextTick(() => {
+    const container = containerRef.value;
+    container.scrollTop = container.scrollHeight;
+  });
+}
+
+// RealtimeAPIのサーバーイベントハンドラ
 function handleWebSocketMessage(message: MessageEvent) {
   const event = JSON.parse(message.data);
   logEvent(event.type);
   switch (event.type) {
     case 'response.audio.delta': {
-      enqueueAudio(base64ToAudioData(event.delta));
+      enqueueAudio(base64ToArrayBuffer(event.delta));
       break;
     }
     case 'response.audio_transcript.done':
       logMessage(`🤖: ${event.transcript}`);
       break;
     case 'conversation.item.input_audio_transcription.completed':
-      logMessage(`😄: ${event.transcript}`);
+      setTimeout(() => logMessage(`😄: ${event.transcript}`), 100);
       break;
     case 'error':
       logEvent(event.error);
@@ -46,6 +53,25 @@ function handleWebSocketMessage(message: MessageEvent) {
   }
 }
 
+// Realtime API
+const { connect, isConnected, disconnect, sendMessage } = useRealtimeApi({
+  url: 'ws://localhost:3000/ws',
+  logMessage,
+  onMessageCallback: handleWebSocketMessage,
+});
+
+function handleAudioFlush(buffer: ArrayBuffer) {
+  // マイクからの音声入力をRealtime APIに送信
+  sendMessage({ type: 'input_audio_buffer.append', audio: arrayBufferToBase64(buffer) });
+}
+
+const { startRecording, stopRecording, enqueueAudio, isRecording } = useAudio({
+  audioCanvas,
+  logMessage,
+  onFlushCallback: handleAudioFlush,
+});
+
+// イベントハンドラ(録音開始・終了ボタン)
 async function toggleRecording() {
   if (isRecording.value) {
     await stopRecording();
@@ -112,7 +138,7 @@ onUnmounted(() => {
     <hr>
     <div
       ref="log-container"
-      class="w-full mt-2 max-w-lg h-80 overflow-y-auto bg-white rounded-lg shadow-md p-4"
+      class="w-full mt-4 max-w-lg h-80 overflow-y-auto bg-white rounded-lg shadow-md p-4"
     >
       <div
         v-for="event in eventLog"

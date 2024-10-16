@@ -1,3 +1,5 @@
+import { arrayBufferToAudioData } from '~/utils';
+
 const BUFFER_SIZE = 8192;
 const BUFFER_INTERVAL = 1000;
 
@@ -34,33 +36,53 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
    */
   async function startRecording() {
     isRecording.value = true;
-    audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-    analyser = new AnalyserNode(audioContext, {
-      fftSize: 2048,
-    });
-    audioWaveform.value = initCanvas(audioCanvas, analyser, isRecording);
+    try {
+      // マイクの準備(許可要求)
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    await audioContext.audioWorklet.addModule('/audio-processor.js');
+      audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
 
-    const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor');
+      // 音声変換プロセッサ(32-bit float -> PCM16): オーディオスレッド(AudioWorklet)
+      await audioContext.audioWorklet.addModule('/audio-processor.js');
+      const audioWorkletNode = new AudioWorkletNode(audioContext, 'audio-processor');
+      audioWorkletNode.port.onmessage = event => processAudioData(event.data);
 
-    audioWorkletNode.port.onmessage = event => processAudioData(event.data);
+      // マイクの入力を音声変換プロセッサに接続
+      mediaStreamSource = new MediaStreamAudioSourceNode(audioContext, { mediaStream });
+      mediaStreamSource.connect(audioWorkletNode);
 
-    flushBufferTimeoutId = setInterval(() => {
-      if (audioBuffer.length > 0) {
-        flushBuffer();
+      // 音声分析ノードも接続(波形表示)
+      analyser = new AnalyserNode(audioContext, {
+        fftSize: 2048,
+      });
+      mediaStreamSource.connect(analyser);
+      audioWaveform.value = initCanvas(audioCanvas, analyser, isRecording);
+      if (audioWaveform.value) {
+        audioWaveform.value.drawWaveform();
       }
-    }, BUFFER_INTERVAL);
 
-    mediaStreamSource = new MediaStreamAudioSourceNode(audioContext, { mediaStream });
-    mediaStreamSource.connect(audioWorkletNode);
-    mediaStreamSource.connect(analyser);
+      // 一定間隔でFlush
+      flushBufferTimeoutId = setInterval(() => {
+        if (audioBuffer.length > 0) {
+          flushBuffer();
+        }
+      }, BUFFER_INTERVAL);
 
-    if (audioWaveform.value) {
-      audioWaveform.value.drawWaveform();
+      logMessage('Start Recording...🎙️');
+    } catch (e) {
+      if (e instanceof DOMException) {
+        if (e.name === 'NotAllowedError') {
+          logMessage('Allow audio use');
+          isRecording.value = false;
+          return;
+        } else if (e.name === 'NotFoundError') {
+          logMessage('Device not found');
+          isRecording.value = false;
+          return;
+        }
+      }
+      throw e;
     }
-    logMessage('Start Recording...🎙️');
   }
 
   function processAudioData(data: ArrayBuffer) {
@@ -124,24 +146,25 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
       return;
     }
 
-    isPlaying.value = true;
+    // キューから音声を取り出し
     const audio = audioQueue.shift();
     if (!audio) return;
+    isPlaying.value = true;
 
+    // 音声出力をデバイス(スピーカー)/音声分析ノードに接続
     const audioBuffer = new AudioBuffer({
       numberOfChannels: 1,
       length: audio.length,
       sampleRate: audioContext.sampleRate,
     });
     audioBuffer.copyToChannel(audio, 0);
-
     const source = new AudioBufferSourceNode(
       audioContext, {
         buffer: audioBuffer,
       },
     );
     source.connect(audioContext.destination);
-    source.connect(analyser);
+    source.connect(analyser); // 出力の音声波形表示用
     source.start();
 
     source.onended = () => {
@@ -153,12 +176,12 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
   /**
    * Enqueues the provided audio buffer to the audio queue.
    *
-   * @param {Float32Array} buffer - The audio buffer to be enqueued.
+   * @param {ArrayBuffer} buffer - The audio buffer to be enqueued.
    *
    * @return {void}
    */
-  function enqueueAudio(buffer: Float32Array) {
-    audioQueue.push(buffer);
+  function enqueueAudio(buffer: ArrayBuffer) {
+    audioQueue.push(arrayBufferToAudioData(buffer));
     if (!isPlaying.value) {
       playFromQueue();
     }

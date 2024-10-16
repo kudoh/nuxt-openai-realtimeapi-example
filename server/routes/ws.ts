@@ -1,11 +1,14 @@
 import { WebSocket } from 'ws';
 // https://nitro.unjs.io/guide/websocket
 // https://crossws.unjs.io/
+
+// 接続ユーザー単位にセッションを管理する
 const connections: { [id: string]: WebSocket } = {};
 
 export default defineWebSocketHandler({
   open(peer) {
     if (!connections[peer.id]) {
+      // OpenAIのRealtime APIとの接続
       const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01';
       connections[peer.id] = new WebSocket(url, {
         headers: {
@@ -17,6 +20,7 @@ export default defineWebSocketHandler({
     const instructions = '明るく元気に話してください。仲の良い友人のように振る舞い、敬語は使わないでください。出力は日本語でしてください。';
 
     connections[peer.id].on('open', () => {
+      // Realtime APIのセッション設定
       connections[peer.id].send(JSON.stringify({
         type: 'session.update',
         session: {
@@ -28,11 +32,12 @@ export default defineWebSocketHandler({
       }));
     });
     connections[peer.id].on('message', (message) => {
-      peer.send(message.toString()); // send back the server event as it is
+      // Realtime APIのサーバーイベントはそのままクライアントに返す
+      peer.send(message.toString());
     });
   },
   message(peer, message) {
-    // relaying the client event as it is
+    // クライアントイベインとはそのままRealtime APIに中継する
     connections[peer.id].send(message.text());
   },
   close(peer) {
