@@ -38,10 +38,10 @@ function handleWebSocketMessage(message: MessageEvent) {
       break;
     }
     case 'response.audio_transcript.done':
-      logMessage(`🤖: ${event.transcript}`);
+      setTimeout(() => logMessage(`🤖: ${event.transcript}`), 100);
       break;
     case 'conversation.item.input_audio_transcription.completed':
-      setTimeout(() => logMessage(`😄: ${event.transcript}`), 100);
+      logMessage(`😄: ${event.transcript}`);
       break;
     case 'error':
       logEvent(event.error);
