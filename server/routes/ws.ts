@@ -9,7 +9,7 @@ export default defineWebSocketHandler({
   open(peer) {
     if (!connections[peer.id]) {
       // OpenAIのRealtime APIとの接続
-      const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01';
+      const url = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17';
       connections[peer.id] = new WebSocket(url, {
         headers: {
           'Authorization': 'Bearer ' + process.env.OPENAI_API_KEY,
