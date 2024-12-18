@@ -1,11 +1,9 @@
-import { arrayBufferToAudioData } from '~/utils';
-
 const BUFFER_SIZE = 8192;
 const BUFFER_INTERVAL = 1000;
 
 type Params = {
-  audioCanvas: Ref<HTMLCanvasElement>;
-  logMessage: (string) => void;
+  audioCanvas: Ref<HTMLCanvasElement | null>;
+  logMessage: (msg: string) => void;
   onFlushCallback: (buffer: ArrayBuffer) => void;
 };
 
@@ -40,7 +38,7 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
       // マイクの準備(許可要求)
       const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+      audioContext = new window.AudioContext({ sampleRate: 24000 });
 
       // 音声変換プロセッサ(32-bit float -> PCM16): オーディオスレッド(AudioWorklet)
       await audioContext.audioWorklet.addModule('/audio-processor.js');
@@ -62,7 +60,7 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
       }
 
       // 一定間隔でFlush
-      flushBufferTimeoutId = setInterval(() => {
+      flushBufferTimeoutId = window.setInterval(() => {
         if (audioBuffer.length > 0) {
           flushBuffer();
         }
@@ -164,7 +162,7 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
       },
     );
     source.connect(audioContext.destination);
-    source.connect(analyser); // 出力の音声波形表示用
+    source.connect(analyser!); // 出力の音声波形表示用
     source.start();
 
     source.onended = () => {

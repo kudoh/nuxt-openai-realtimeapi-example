@@ -42,7 +42,8 @@ export default defineWebSocketHandler({
   },
   close(peer) {
     connections[peer.id].close();
-    connections[peer.id] = undefined;
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+    delete connections[peer.id];
     console.log('closed websocket');
   },
   error(peer, error) {

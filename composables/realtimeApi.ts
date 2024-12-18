@@ -1,6 +1,6 @@
 type Params = {
   url: string;
-  logMessage: (string) => void;
+  logMessage: (msg: string) => void;
   onMessageCallback?: (message: MessageEvent) => void;
 };
 
@@ -32,7 +32,8 @@ export const useRealtimeApi = ({ url, logMessage, onMessageCallback }: Params) =
     };
 
     ws.onerror = (error) => {
-      logMessage('Error occurred😭: ' + error.message);
+      console.log(error);
+      logMessage('Error occurred😭');
     };
 
     ws.onmessage = (message: MessageEvent) => {

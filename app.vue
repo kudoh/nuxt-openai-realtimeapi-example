@@ -21,9 +21,10 @@ function logEvent(message: string) {
   if (logContainer.value) scroll(logContainer);
 }
 
-function scroll(containerRef: Ref<HTMLElement>) {
+function scroll(containerRef: Ref<HTMLElement | null>) {
   nextTick(() => {
     const container = containerRef.value;
+    if (!container) return;
     container.scrollTop = container.scrollHeight;
   });
 }

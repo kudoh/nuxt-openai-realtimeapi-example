@@ -1,5 +1,5 @@
 export function useAudioVisualizer() {
-  function initCanvas(canvasRef: Ref<HTMLCanvasElement>, analyser: AnalyserNode, isActive: Ref<boolean>) {
+  function initCanvas(canvasRef: Ref<HTMLCanvasElement | null>, analyser: AnalyserNode, isActive: Ref<boolean>) {
     const dataArray: Uint8Array = new Uint8Array(analyser.fftSize);
 
     const drawWaveform = () => {
