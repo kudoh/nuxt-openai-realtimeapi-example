@@ -1,6 +1,8 @@
 export function useAudioVisualizer() {
-  function initCanvas(canvasRef: Ref<HTMLCanvasElement | null>, analyser: AnalyserNode, isActive: Ref<boolean>) {
+  function initCanvas(canvasRef: Ref<HTMLCanvasElement | null>, analyser: AnalyserNode) {
     const dataArray: Uint8Array = new Uint8Array(analyser.fftSize);
+    let animationFrameId: number | null = null; // requestAnimationFrameのID管理
+    let running = true; // 描画の実行フラグ
 
     const drawWaveform = () => {
       const canvas = canvasRef.value;
@@ -13,7 +15,8 @@ export function useAudioVisualizer() {
       if (!ctx) return;
 
       const draw = () => {
-        if (!analyser || !dataArray) return;
+        if (!running) return; // 停止フラグが立っていたら描画を中断
+
         analyser.getByteTimeDomainData(dataArray);
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -40,13 +43,27 @@ export function useAudioVisualizer() {
         ctx.lineTo(canvas.width, canvas.height / 2);
         ctx.stroke();
 
-        if (isActive.value) {
-          requestAnimationFrame(draw);
-        }
+        animationFrameId = requestAnimationFrame(draw); // next frame
       };
       draw();
     };
-    return { drawWaveform };
+
+    const stop = () => {
+      running = false; // 描画の実行を停止
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      const canvas = canvasRef.value;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+    };
+
+    return { drawWaveform, stop };
   }
 
   return {

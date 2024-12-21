@@ -12,6 +12,7 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
   const isRecording = ref(false);
   const isPlaying = ref(false);
   const { initCanvas } = useAudioVisualizer();
+  let audioWaveform: ReturnType<typeof initCanvas> | null = null;
 
   let analyser: AnalyserNode | null;
   let audioBuffer: Int16Array[] = [];
@@ -19,7 +20,6 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
   let mediaStreamSource: MediaStreamAudioSourceNode | null = null;
   const audioQueue: Float32Array[] = [];
   let flushBufferTimeoutId: number | null = null;
-  const audioWaveform = ref<ReturnType<typeof initCanvas>>();
 
   /**
    * Initiates the audio recording process by setting the recording state to true, creating an AudioContext object,
@@ -54,10 +54,8 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
         fftSize: 2048,
       });
       mediaStreamSource.connect(analyser);
-      audioWaveform.value = initCanvas(audioCanvas, analyser, isRecording);
-      if (audioWaveform.value) {
-        audioWaveform.value.drawWaveform();
-      }
+      audioWaveform = initCanvas(audioCanvas, analyser);
+      audioWaveform.drawWaveform();
 
       // 一定間隔でFlush
       flushBufferTimeoutId = window.setInterval(() => {
@@ -121,6 +119,13 @@ export function useAudio({ audioCanvas, logMessage, onFlushCallback }: Params) {
     if (!isRecording.value) return;
 
     mediaStreamSource?.disconnect();
+    mediaStreamSource = null;
+    analyser?.disconnect();
+    analyser = null;
+    audioContext?.close();
+    audioContext = null;
+    audioWaveform?.stop();
+    audioWaveform = null;
     isRecording.value = false;
 
     if (flushBufferTimeoutId !== null) {
